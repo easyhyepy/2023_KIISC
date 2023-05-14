@@ -1,0 +1,100 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.spatial import distance
+import time
+
+
+# AP 좌표와 반지름 설정
+AP1 = (5, 5)
+AP1_radius = 6
+AP2 = (5, 15)
+AP2_radius = 6
+AP3 = (12, 10)
+AP3_radius = 8
+
+# 그림 그렸음
+AP1_AP2_dist = distance.euclidean(AP1, AP2)
+AP1_AP3_dist = distance.euclidean(AP1, AP3)
+AP2_AP3_dist = distance.euclidean(AP2, AP3)
+circle1 = plt.Circle(AP1, AP1_radius, fill=False, linestyle='--')
+circle2 = plt.Circle(AP2, AP2_radius, fill=False, linestyle='--')
+circle3 = plt.Circle(AP3, AP3_radius, fill=False, linestyle='--')
+fig, ax = plt.subplots(figsize=(8, 8))
+ax.set_aspect('equal')
+ax.set_xlim((-5, 25))
+ax.set_ylim((-5, 25))
+ax.add_artist(circle1)
+ax.add_artist(circle2)
+ax.add_artist(circle3)
+
+# add circle centers - AP 중심 좌표 -> 파란색으로 찍음.
+plt.plot(*AP1, 'bo')
+plt.plot(*AP2, 'bo')
+plt.plot(*AP3, 'bo')
+
+
+
+num_trials = 1000  # 시뮬레이션 반복 횟수
+total_error = 0  # 총 오차
+num_success = 0  # 위치 추정이 성공한 횟수
+
+start_time = time.time()  # 코드 실행 시작 시간 기록
+for i in range(num_trials):
+    # 실제 위치를 무작위로 선택 - 난수 최소값~ 난수 최대값
+    actual_pos = np.random.uniform(-1, 21, size=2)
+
+    ################################## TODO: 측위 방법 구현 ##################################
+    # AP1, 2, 3의 신호가 도달하는지 안하는지에 따라, 총 8개의 구역으로 나뉜다.
+    # 삼변측위에 비해 정확하진 않지만 어느 지역쯤에 있는지 위치를 추정하는 코드 작성해야함
+
+    AP1_dist = distance.euclidean(actual_pos, AP1)
+    AP2_dist = distance.euclidean(actual_pos, AP2)
+    AP3_dist = distance.euclidean(actual_pos, AP3)
+
+    # 8개 구역 중에서 가장 가능성이 높은 구역을 찾아냄
+    if AP1_dist < AP1_radius and AP2_dist < AP2_radius and AP3_dist >= AP3_radius:
+        estimated_pos = (AP1[0], AP2[1])
+    elif AP1_dist < AP1_radius and AP2_dist >= AP2_radius and AP3_dist < AP3_radius:
+        estimated_pos = (AP1[0], AP3[1])
+    elif AP1_dist >= AP1_radius and AP2_dist < AP2_radius and AP3_dist < AP3_radius:
+        estimated_pos = (AP2[0], AP3[1])
+    elif AP1_dist < AP1_radius and AP2_dist < AP2_radius and AP3_dist < AP3_radius:
+        if AP1_AP2_dist > AP1_AP3_dist and AP1_AP2_dist > AP2_AP3_dist:
+            estimated_pos = ((AP1[0] + AP2[0]) / 2, (AP1[1] + AP2[1]) / 2)
+        elif AP1_AP3_dist > AP1_AP2_dist and AP1_AP3_dist > AP2_AP3_dist:
+            estimated_pos = ((AP1[0] + AP3[0]) / 2, (AP1[1] + AP3[1]) / 2)
+        else:
+            estimated_pos = ((AP2[0] + AP3[0]) / 2, (AP2[1] + AP3[1]) / 2)
+    elif AP1_dist < AP1_radius and AP2_dist >= AP2_radius and AP3_dist >= AP3_radius:
+        estimated_pos = AP1
+    elif AP1_dist >= AP1_radius and AP2_dist < AP2_radius and AP3_dist >= AP3_radius:
+        estimated_pos = AP2
+    elif AP1_dist >= AP1_radius and AP2_dist >= AP2_radius and AP3_dist < AP3_radius:
+        estimated_pos = AP3
+    else:
+        estimated_pos = None
+    
+    # 위치 추정이 성공하면, 위치 오차 계산 및 통계량 업데이트
+    if estimated_pos is not None:
+        # 실제 위치와 추정된 위치 그리기
+        plt.plot(*actual_pos, 'ro')
+        plt.plot(*estimated_pos, 'gx')
+    else:
+        # 위치 추정 실패한 경우에도 실제 위치 그리기
+        plt.plot(*actual_pos, 'ro')
+
+    
+    # 위치 추정이 성공하면, 위치 오차 계산 및 통계량 업데이트
+    if estimated_pos is not None:
+        error = distance.euclidean(actual_pos, estimated_pos)
+        total_error += error
+        num_success += 1
+
+
+end_time = time.time()  # 코드 실행 종료 시간 기록
+elapsed_time = end_time - start_time  # 실행 시간 계산
+
+print(num_trials, "번 반복시 Elapsed time: ", elapsed_time,"  seconds")
+
+final_accuracy = total_error / num_success
+print("Final Accuracy :", final_accuracy, "=", total_error, "(total error)/(num_success인)", num_success, "\n")
